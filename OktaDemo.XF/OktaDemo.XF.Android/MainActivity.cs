@@ -42,18 +42,5 @@ namespace OktaDemo.XF.Droid
                 LoginProvider.Current.NotifyOfCallback(intent);
             }
         }
-
-        public static PendingIntent CreatePostAuthorizationIntent(Context context, AuthorizationRequest request, AuthorizationServiceDiscovery discoveryDoc, AuthState authState)
-        {
-            var intent = new Intent(context, typeof(MainActivity));
-            intent.PutExtra(Constants.AuthStateKey, authState.JsonSerializeString());
-            if (discoveryDoc != null)
-            {
-                intent.PutExtra(Constants.AuthServiceDiscoveryKey, discoveryDoc.DocJson.ToString());
-            }
-
-            return PendingIntent.GetActivity(context, request.GetHashCode(), intent, 0);
-        }
     }
 }
-

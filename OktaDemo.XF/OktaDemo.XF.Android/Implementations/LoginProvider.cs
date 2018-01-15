@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Android.App;
 using Android.Content;
 using Nito.AsyncEx;
 using OktaDemo.XF.Droid.Implementations;
@@ -65,13 +66,27 @@ namespace OktaDemo.XF.Droid.Implementations
 
             Console.WriteLine("Making auth request to " + serviceConfig.AuthorizationEndpoint);
 
-            var postAuthorizationIntent = MainActivity.CreatePostAuthorizationIntent(MainActivity.Instance, authRequest,
+            var postAuthorizationIntent = CreatePostAuthorizationIntent(MainActivity.Instance, authRequest,
                 serviceConfig.DiscoveryDoc, authState);
 
             var customTabsIntentBuilder = _authService.CreateCustomTabsIntentBuilder();
             var customTabsIntent = customTabsIntentBuilder.Build();
 
             _authService.PerformAuthorizationRequest(authRequest, postAuthorizationIntent, customTabsIntent);
+        }
+
+
+        private PendingIntent CreatePostAuthorizationIntent(Context context, AuthorizationRequest request,
+            AuthorizationServiceDiscovery discoveryDoc, AuthState authState)
+        {
+            var intent = new Intent(context, typeof(MainActivity));
+            intent.PutExtra(Constants.AuthStateKey, authState.JsonSerializeString());
+            if (discoveryDoc != null)
+            {
+                intent.PutExtra(Constants.AuthServiceDiscoveryKey, discoveryDoc.DocJson.ToString());
+            }
+
+            return PendingIntent.GetActivity(context, request.GetHashCode(), intent, 0);
         }
 
         internal void NotifyOfCallback(Intent intent)
