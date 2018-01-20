@@ -30,15 +30,17 @@ namespace OktaDemo.XF.iOS.Implementations
         // Authorization code flow using OIDAuthState automatic code exchanges.
         public async Task<AuthInfo> LoginAsync()
         {
-            var issuer = new NSUrl(Constants.Issuer);
+            //var issuer = new NSUrl(Constants.Issuer);
             var redirectUri = new NSUrl(Constants.RedirectUri);
 
-            Console.WriteLine($"Fetching configuration for issuer: {issuer}");
+            //Console.WriteLine($"Fetching configuration for issuer: {issuer}");
 
             try
             {
                 // discovers endpoints
-                var configuration = await AuthorizationService.DiscoverServiceConfigurationForIssuerAsync(issuer);
+                var configuration =
+                    await AuthorizationService.DiscoverServiceConfigurationForDiscoveryAsync(
+                        new NSUrl(Constants.DiscoveryEndpoint));
 
                 Console.WriteLine($"Got configuration: {configuration}");
 

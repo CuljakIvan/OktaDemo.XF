@@ -11,7 +11,6 @@ using OpenId.AppAuth;
 using Org.Json;
 
 [assembly: Xamarin.Forms.Dependency(typeof(LoginProvider))]
-
 namespace OktaDemo.XF.Droid.Implementations
 {
     public class LoginProvider : ILoginProvider
@@ -26,8 +25,7 @@ namespace OktaDemo.XF.Droid.Implementations
             Current = this;
             _authService = new AuthorizationService(MainActivity.Instance);
         }
-
-
+        
         public async Task<AuthInfo> LoginAsync()
         {
             try
@@ -93,21 +91,52 @@ namespace OktaDemo.XF.Droid.Implementations
         {
             try
             {
-                _authState = GetAuthStateFromIntent(intent);
+                if (!intent.HasExtra(Constants.AuthStateKey))
+                {
+                    _authState = null;
+                }
+                else
+                {
+                    try
+                    {
+                        _authState = AuthState.JsonDeserialize(intent.GetStringExtra(Constants.AuthStateKey));
+                    }
+                    catch (JSONException ex)
+                    {
+                        Console.WriteLine("Malformed AuthState JSON saved: " + ex);
+                        _authState = null;
+                    }
+                }
                 if (_authState != null)
                 {
                     AuthorizationResponse response = AuthorizationResponse.FromIntent(intent);
-                    AuthorizationException ex = AuthorizationException.FromIntent(intent);
-                    _authState.Update(response, ex);
+                    AuthorizationException authEx = AuthorizationException.FromIntent(intent);
+                    _authState.Update(response, authEx);
 
                     if (response != null)
                     {
                         Console.WriteLine("Received AuthorizationResponse.");
-                        PerformTokenRequest(response.CreateTokenExchangeRequest());
+                        try
+                        {
+                            var clientAuthentication = _authState.ClientAuthentication;
+                        }
+                        catch (ClientAuthenticationUnsupportedAuthenticationMethod ex)
+                        {
+                            //We need this line to tell the Login method to return the result
+                            _loginResultWaitHandle.Set();
+
+                            Console.WriteLine(
+                                "Token request cannot be made, client authentication for the token endpoint could not be constructed: " +
+                                ex);
+
+                            return;
+                        }
+
+                        _authService.PerformTokenRequest(response.CreateTokenExchangeRequest(), ReceivedTokenResponse);
                     }
                     else
                     {
-                        Console.WriteLine("Authorization failed: " + ex);
+                        Console.WriteLine("Authorization failed: " + authEx);
                     }
                 }
                 else
@@ -121,44 +150,6 @@ namespace OktaDemo.XF.Droid.Implementations
                 //We need this line to tell the Login method to return the result
                 _loginResultWaitHandle.Set();
             }
-        }
-
-        private AuthState GetAuthStateFromIntent(Intent intent)
-        {
-            if (!intent.HasExtra(Constants.AuthStateKey))
-            {
-                return null;
-            }
-            try
-            {
-                return AuthState.JsonDeserialize(intent.GetStringExtra(Constants.AuthStateKey));
-            }
-            catch (JSONException ex)
-            {
-                Console.WriteLine("Malformed AuthState JSON saved: " + ex);
-                return null;
-            }
-        }
-
-        private void PerformTokenRequest(TokenRequest request)
-        {
-            try
-            {
-                var clientAuthentication = _authState.ClientAuthentication;
-            }
-            catch (ClientAuthenticationUnsupportedAuthenticationMethod ex)
-            {
-                //We need this line to tell the Login method to return the result
-                _loginResultWaitHandle.Set();
-
-                Console.WriteLine(
-                    "Token request cannot be made, client authentication for the token endpoint could not be constructed: " +
-                    ex);
-
-                return;
-            }
-
-            _authService.PerformTokenRequest(request, ReceivedTokenResponse);
         }
 
         private void ReceivedTokenResponse(TokenResponse tokenResponse, AuthorizationException authException)
